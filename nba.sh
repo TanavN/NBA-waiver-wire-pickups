@@ -16,3 +16,17 @@ do
 
   players+=("$player")
 done
+
+echo "----------------------"
+echo "Looking up players..."
+echo "----------------------"
+
+for player in "${players[@]}"
+do
+    encoded_player=${player// /%20}
+
+    player_id=$(curl -s "https://api.bigballsdata.com/v1/players?name=$encoded_player&sport=basketball" \
+        -H "Authorization: Bearer $NBA_API_KEY" | jq -r '.data[0].id')
+
+    echo "$player: $player_id"
+done
