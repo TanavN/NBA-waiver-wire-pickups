@@ -29,4 +29,9 @@ do
         -H "Authorization: Bearer $NBA_API_KEY" | jq -r '.data[0].id')
 
     echo "$player: $player_id"
+
+    stats=$(curl -s "https://api.bigballsdata.com/v1/players/$player_id/stats?sport=basketball" \
+    -H "Authorization: Bearer $NBA_API_KEY" | jq -r '.data')
+
+    echo "$stats" | jq '{gp, ppg, rpg, apg, spg, bpg}'
 done
