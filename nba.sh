@@ -35,19 +35,26 @@ do
     
     gamelog=$(curl -s "https://api.bigballsdata.com/v1/players/$player_id/gamelog?sport=basketball" \
     -H "Authorization: Bearer $NBA_API_KEY")
-
+    
     past5_ppg=$(echo "$gamelog" | jq '[.data[:5][] | .pts] | add / length')
     past5_apg=$(echo "$gamelog" | jq '[.data[:5][] | .ast] | add / length')
     past5_rpg=$(echo "$gamelog" | jq '[.data[:5][] | .reb] | add / length')
     past5_spg=$(echo "$gamelog" | jq '[.data[:5][] | .stl] | add / length')
     past5_bpg=$(echo "$gamelog" | jq '[.data[:5][] | .blk] | add / length')  
+    past5_tov=$(echo "$gamelog" | jq '[.data[:5][] | .turnovers] | add / length')
 
+    tov=$(echo "$stats" | jq -r '.turnover')
     ppg=$(echo "$stats" | jq -r '.pts')
     rpg=$(echo "$stats" | jq -r '.reb')
     apg=$(echo "$stats" | jq -r '.ast')
     spg=$(echo "$stats" | jq -r '.stl')
     bpg=$(echo "$stats" | jq -r '.blk')
     
+    season_fp=$(echo "$ppg + 1.2*$rpg + 1.5*$apg + 3*$spg + 3*$bpg - $tov" | bc)
+    past5_fp=$(echo "$past5_ppg + 1.2*$past5_rpg + 1.5*$past5_apg + 3*$past5_spg + 3*$past5_bpg - $past5_tov" | bc)
+    
+    pickup_score=$(echo "scale=2; 0.70*$season_fp + 0.30*$past5_fp" | bc)
+
     echo ""                                                                     
     echo "Season averages vs. Last 5 games"                                     
     echo "PPG: $ppg -> $past5_ppg"                                              
@@ -55,5 +62,7 @@ do
     echo "APG: $apg -> $past5_apg"                                              
     echo "SPG: $spg -> $past5_spg"                                              
     echo "BPG: $bpg -> $past5_bpg"
-
+    echo "TOV: $tov -> $past5_tov"
+    echo "Season fp $season_fp and past 5 $past5_fp"
+    echo "Pickup Score: $pickup_score"
 done
