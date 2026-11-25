@@ -5,6 +5,8 @@ echo "Welcome to NBA Wavier Wire Pickups"
 echo "----------------------------------"
 
 players=()
+player_names=()
+player_scores=()
 
 while true
 do
@@ -65,4 +67,16 @@ do
     echo "TOV: $tov -> $past5_tov"
     echo "Season fp $season_fp and past 5 $past5_fp"
     echo "Pickup Score: $pickup_score"
+
+    player_names+=("$player")
+    player_scores+=("$pickup_score")
+   
 done
+
+echo "----------------------"
+echo "Waiver Wire Rankings"
+echo "----------------------"
+
+for i in "${!player_scores[@]}"; do
+  echo "${player_scores[$i]} ${player_names[$i]}"
+done | sort -rn
