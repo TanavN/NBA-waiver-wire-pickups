@@ -16,6 +16,11 @@ do
     break
   fi
 
+  if [[ " ${players[*]} " == *" $player "* ]]; then
+    echo "You already entered that player!"
+    continue
+  fi
+
   players+=("$player")
 done
 
@@ -25,51 +30,64 @@ echo "----------------------"
 
 for player in "${players[@]}"
 do
-    encoded_player=${player// /%20}
+  encoded_player=${player// /%20}
 
-    player_id=$(curl -s "https://api.bigballsdata.com/v1/players?name=$encoded_player&sport=basketball" \
-        -H "Authorization: Bearer $NBA_API_KEY" | jq -r '.data[0].id')
-
-    echo "$player: $player_id"
-    
-    stats=$(curl -s "https://api.bigballsdata.com/v1/nba/players/$player_id/season-averages" \
-    -H "Authorization: Bearer $NBA_API_KEY" | jq '.data[0]')
-    
-    gamelog=$(curl -s "https://api.bigballsdata.com/v1/players/$player_id/gamelog?sport=basketball" \
+  player_response=$(curl -s "https://api.bigballsdata.com/v1/players?name=$encoded_player&sport=basketball" \
     -H "Authorization: Bearer $NBA_API_KEY")
-    
-    past5_ppg=$(echo "$gamelog" | jq '[.data[:5][] | .pts] | add / length')
-    past5_apg=$(echo "$gamelog" | jq '[.data[:5][] | .ast] | add / length')
-    past5_rpg=$(echo "$gamelog" | jq '[.data[:5][] | .reb] | add / length')
-    past5_spg=$(echo "$gamelog" | jq '[.data[:5][] | .stl] | add / length')
-    past5_bpg=$(echo "$gamelog" | jq '[.data[:5][] | .blk] | add / length')  
-    past5_tov=$(echo "$gamelog" | jq '[.data[:5][] | .turnovers] | add / length')
 
-    tov=$(echo "$stats" | jq -r '.turnover')
-    ppg=$(echo "$stats" | jq -r '.pts')
-    rpg=$(echo "$stats" | jq -r '.reb')
-    apg=$(echo "$stats" | jq -r '.ast')
-    spg=$(echo "$stats" | jq -r '.stl')
-    bpg=$(echo "$stats" | jq -r '.blk')
-    
-    season_fp=$(echo "$ppg + 1.2*$rpg + 1.5*$apg + 3*$spg + 3*$bpg - $tov" | bc)
-    past5_fp=$(echo "$past5_ppg + 1.2*$past5_rpg + 1.5*$past5_apg + 3*$past5_spg + 3*$past5_bpg - $past5_tov" | bc)
-    
-    pickup_score=$(echo "scale=2; 0.70*$season_fp + 0.30*$past5_fp" | bc)
+  player_id=$(echo "$player_response" | jq -r '.data[0].id // empty')
+  returned_name=$(echo "$player_response" | jq -r '.data[0].name // empty')
+  lower_returned_name=$(echo "$returned_name" | tr '[:upper:]' '[:lower:]')
+  lower_player=$(echo "$player" | tr '[:upper:]' '[:lower:]')
 
-    echo ""                                                                     
-    echo "Season averages vs. Last 5 games"                                     
-    echo "PPG: $ppg -> $past5_ppg"                                              
-    echo "RPG: $rpg -> $past5_rpg"                                              
-    echo "APG: $apg -> $past5_apg"                                              
-    echo "SPG: $spg -> $past5_spg"                                              
-    echo "BPG: $bpg -> $past5_bpg"
-    echo "TOV: $tov -> $past5_tov"
-    echo "Season fp $season_fp and past 5 $past5_fp"
-    echo "Pickup Score: $pickup_score"
+  if [[ -z "$player_id" || "$lower_returned_name" != "$lower_player" ]]; then
+    echo "Player not found. Skipping $player."
+    continue
+  fi
+  
+  if [[ "$stats" == "null" ]]; then
+    echo "No season stats found for $player. Skipping."
+    continue
+  fi
 
-    player_names+=("$player")
-    player_scores+=("$pickup_score")
+  stats=$(curl -s "https://api.bigballsdata.com/v1/nba/players/$player_id/season-averages" \
+  -H "Authorization: Bearer $NBA_API_KEY" | jq '.data[0]')
+    
+  gamelog=$(curl -s "https://api.bigballsdata.com/v1/players/$player_id/gamelog?sport=basketball" \
+  -H "Authorization: Bearer $NBA_API_KEY")
+    
+  past5_ppg=$(echo "$gamelog" | jq '[.data[:5][] | .pts] | add / length')
+  past5_apg=$(echo "$gamelog" | jq '[.data[:5][] | .ast] | add / length')
+  past5_rpg=$(echo "$gamelog" | jq '[.data[:5][] | .reb] | add / length')
+  past5_spg=$(echo "$gamelog" | jq '[.data[:5][] | .stl] | add / length')
+  past5_bpg=$(echo "$gamelog" | jq '[.data[:5][] | .blk] | add / length')  
+  past5_tov=$(echo "$gamelog" | jq '[.data[:5][] | .turnovers] | add / length')
+
+  tov=$(echo "$stats" | jq -r '.turnover')
+  ppg=$(echo "$stats" | jq -r '.pts')
+  rpg=$(echo "$stats" | jq -r '.reb')
+  apg=$(echo "$stats" | jq -r '.ast')
+  spg=$(echo "$stats" | jq -r '.stl')
+  bpg=$(echo "$stats" | jq -r '.blk')
+    
+  season_fp=$(echo "$ppg + 1.2*$rpg + 1.5*$apg + 3*$spg + 3*$bpg - $tov" | bc)
+  past5_fp=$(echo "$past5_ppg + 1.2*$past5_rpg + 1.5*$past5_apg + 3*$past5_spg + 3*$past5_bpg - $past5_tov" | bc)
+    
+  pickup_score=$(echo "scale=2; 0.70*$season_fp + 0.30*$past5_fp" | bc)
+
+  echo ""                                                                     
+  echo "Season averages vs. Last 5 games"                                     
+  echo "PPG: $ppg -> $past5_ppg"                                              
+  echo "RPG: $rpg -> $past5_rpg"                                              
+  echo "APG: $apg -> $past5_apg"                                              
+  echo "SPG: $spg -> $past5_spg"                                              
+  echo "BPG: $bpg -> $past5_bpg"
+  echo "TOV: $tov -> $past5_tov"
+  echo "Season fp $season_fp and past 5 $past5_fp"
+  echo "Pickup Score: $pickup_score"
+
+  player_names+=("$player")
+  player_scores+=("$pickup_score")
    
 done
 
