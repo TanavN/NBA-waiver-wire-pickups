@@ -24,6 +24,16 @@ do
   players+=("$player")
 done
 
+echo "Which category would you like to prioritize?"
+echo "1. Points"
+echo "2. Rebounds"
+echo "3. Assists"
+echo "4. Steals"
+echo "5. Blocks"
+echo "6. No Preference"
+
+read -r -p "Enter your choice (1-6): " category
+
 echo "----------------------"
 echo "Looking up players..."
 echo "----------------------"
@@ -69,13 +79,28 @@ do
   apg=$(echo "$stats" | jq -r '.ast')
   spg=$(echo "$stats" | jq -r '.stl')
   bpg=$(echo "$stats" | jq -r '.blk')
-    
-  season_fp=$(echo "$ppg + 1.2*$rpg + 1.5*$apg + 3*$spg + 3*$bpg - $tov" | bc)
-  past5_fp=$(echo "$past5_ppg + 1.2*$past5_rpg + 1.5*$past5_apg + 3*$past5_spg + 3*$past5_bpg - $past5_tov" | bc)
+  
+  case "$category" in
+    1) season_fp=$(echo "2*$ppg + 1.2*$rpg + 1.5*$apg + 3*$spg + 3*$bpg - $tov" | bc)
+       past5_fp=$(echo "2*$past5_ppg + 1.2*$past5_rpg + 1.5*$past5_apg + 3*$past5_spg + 3*$past5_bpg - $past5_tov" | bc) ;;
+    2) season_fp=$(echo "$ppg + 2.4*$rpg + 1.5*$apg + 3*$spg + 3*$bpg - $tov" | bc)
+       past5_fp=$(echo "$past5_ppg + 2.4*$past5_rpg + 1.5*$past5_apg + 3*$past5_spg + 3*$past5_bpg - $past5_tov" | bc) ;;
+    3) season_fp=$(echo "$ppg + 1.2*$rpg + 3*$apg + 3*$spg + 3*$bpg - $tov" | bc)
+       past5_fp=$(echo "$past5_ppg + 1.2*$past5_rpg + 3*$past5_apg + 3*$past5_spg + 3*$past5_bpg - $past5_tov" | bc) ;;
+    4) season_fp=$(echo "$ppg + 1.2*$rpg + 1.5*$apg + 6*$spg + 3*$bpg - $tov" | bc)
+       past5_fp=$(echo "$past5_ppg + 1.2*$past5_rpg + 1.5*$past5_apg + 6*$past5_spg + 3*$past5_bpg - $past5_tov" | bc) ;;
+    5) season_fp=$(echo "$ppg + 1.2*$rpg + 1.5*$apg + 3*$spg + 6*$bpg - $tov" | bc)
+       past5_fp=$(echo "$past5_ppg + 1.2*$past5_rpg + 1.5*$past5_apg + 3*$past5_spg + 6*$past5_bpg - $past5_tov" | bc) ;;
+    6) season_fp=$(echo "$ppg + 1.2*$rpg + 1.5*$apg + 3*$spg + 3*$bpg - $tov" | bc)
+       past5_fp=$(echo "$past5_ppg + 1.2*$past5_rpg + 1.5*$past5_apg + 3*$past5_spg + 3*$past5_bpg - $past5_tov" | bc) ;;
+  esac
     
   pickup_score=$(echo "scale=2; 0.70*$season_fp + 0.30*$past5_fp" | bc)
 
-  echo ""                                                                     
+  echo ""
+  echo "---------------------"
+  echo "$player"
+  echo "---------------------"
   echo "Season averages vs. Last 5 games"                                     
   echo "PPG: $ppg -> $past5_ppg"                                              
   echo "RPG: $rpg -> $past5_rpg"                                              
@@ -94,7 +119,11 @@ done
 echo "----------------------"
 echo "Waiver Wire Rankings"
 echo "----------------------"
+rank=0
 
 for i in "${!player_scores[@]}"; do
-  echo "${player_scores[$i]} ${player_names[$i]}"
-done | sort -rn
+    echo "${player_scores[$i]} ${player_names[$i]}"
+done | sort -rn | while read -r score name; do
+    ((rank++))
+    printf "%d. %-20s %s\n" "$rank" "$name" "$score"
+done
